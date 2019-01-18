@@ -1,19 +1,54 @@
 #include <ncurses.h>
+#include <array>
+#include <cstdint>
+#include <random>
+#include <chrono>
 
-struct Piece {
+static constexpr int KEY_ESCAPE{27};
+
+/* Convinience implementation for random integer generation */
+struct Random {
+private:
+  std::mt19937 engine;
+  std::uniform_int_distribution<int> dist;
+public:
+  inline Random(const int smallest, const int biggest)
+	 : engine(std::chrono::system_clock::now().time_since_epoch().count())
+	 , dist(smallest, biggest) {}
+  inline int operator()() { return dist(engine); }
 };
 
-int main()
-{
-  int input_delay_decisecond = 10;
-  int user_input;
-  bool is_running = true;
+enum PieceType { L = 0, J, Z, S, O, I, T };
+static constexpr std::array<uint16_t, 7> pieces {
+  0b0100010001100000,
+  0b0010001001100000,
+  0b0110001100000000,
+  0b0110110000000000,
+  0b0110011000000000,
+  0b0100010001000100,
+  0b1110010000000000
+};
+
+struct Piece {
+private:
+  PieceType type;
+  int x, y;
+public:
+  inline Piece(const PieceType t, const int x = 0, const int y = 0)
+	 : type{t}, x{x}, y{y} {}
+};
+
+int main() {
+  int input_delay_deciseconds{10};
+  bool is_running{true};
+  Random rand{0, pieces.size() - 1};
+  Piece cur_piece{(PieceType)rand()};
   
   /* Init curses */
   initscr();
   noecho();
   keypad(stdscr, true);
-  halfdelay(input_delay_decisecond);
+  halfdelay(input_delay_deciseconds);
   curs_set(0);
   
   /* Create playfield */
@@ -34,6 +69,8 @@ int main()
 		break;
 	 case KEY_DOWN:
 		break;
+	 case KEY_ESCAPE:
+		is_running = false;
 	 }
   }
   

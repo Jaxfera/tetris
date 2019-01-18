@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 2.8)
 
 project(qtetris)
 
+set(CMAKE_CXX_FLAGS "-std=c++17 -Wall -Wextra")
+
 find_package(Curses REQUIRED)
 add_executable(${PROJECT_NAME} "main.cpp")
 target_link_libraries(${PROJECT_NAME} ${CURSES_LIBRARIES})
