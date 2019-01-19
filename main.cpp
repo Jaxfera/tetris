@@ -6,8 +6,6 @@
 #include <random>
 #include <vector>
 
-static bool debug = false;
-
 static constexpr int KEY_ESCAPE{ 27 };
 static WINDOW* playfield;
 
@@ -84,8 +82,6 @@ public:
     }
     inline bool collidesWith(const Piece& p) const
     {
-        if(debug)
-            debug = false;
         // Check if in bounds
         if (p.getY() <= y + h && p.getY() + p.getH() >= y
             && p.getX() <= x + w && p.getX() + p.getW() >= x) {
@@ -146,19 +142,7 @@ int main()
     /* Game loop */
     while (is_running) {
         /* Render */
-        // Window
-        mvprintw(2, 20, "X:%02d", cur_piece.getX());
-        mvprintw(3, 20, "Y:%02d", cur_piece.getY());
-        mvprintw(4, 20, "W:%02d", cur_piece.getW());
-        mvprintw(5, 20, "H:%02d", cur_piece.getH());
         refresh();
-
-        // Playfield
-        /* for (int y = 1; y < 17; y++) {
-            for (int x = 1; x < 9; x++) {
-                mvwaddch(playfield, y, x, ' ');
-            }
-        } */
         wclear(playfield);
         for (const Piece& p : placed_pieces) {
             p.draw();
@@ -174,9 +158,6 @@ int main()
             break;
         case KEY_RIGHT:
             cur_piece.setX(cur_piece.getX() + 1);
-            break;
-        case 'd':
-            debug = true;
             break;
         case KEY_ESCAPE:
             is_running = false;
