@@ -6,6 +6,8 @@
 #include <random>
 #include <vector>
 
+static bool debug = false;
+
 static constexpr int KEY_ESCAPE{ 27 };
 static WINDOW* playfield;
 
@@ -32,11 +34,12 @@ enum PieceType { L = 0,
     I,
     T };
 static constexpr std::array<uint16_t, 7> pieces{
-    0b0010001001100000,
-    0b0110001100000000,
+    0b1000100011000000,
+    0b0100010011000000,
+    0b1100011000000000,
     0b0110110000000000,
-    0b0110011000000000,
-    0b0100010001000100,
+    0b1100110000000000,
+    0b1000100010001000,
     0b1110010000000000
 };
 
@@ -67,14 +70,6 @@ public:
             pmaskh <<= 4;
         }
     }
-    inline Piece(const Piece& lval)
-    {
-        type = lval.getType();
-        x = lval.getX();
-        y = lval.getY();
-        w = lval.getW();
-        h = lval.getH();
-    }
     inline void draw() const
     {
         uint16_t pmask = type;
@@ -89,34 +84,36 @@ public:
     }
     inline bool collidesWith(const Piece& p) const
     {
+        if(debug)
+            debug = false;
         // Check if in bounds
         if (p.getY() <= y + h && p.getY() + p.getH() >= y
             && p.getX() <= x + w && p.getX() + p.getW() >= x) {
-            // Check if masks overlap
             uint16_t pmask = p.getType();
             uint16_t tmask = this->getType();
-            // Bitshift left to match x position
-            if (p.getX() + p.getW() < x + w) {
-                for (int i = 0; i < p.getX() + p.getW() - (x + w); i++) {
-                    tmask <<= tmask & 0x7777;
+
+            // Move the mask of the most right piece to the right
+            if (p.getX() > x) {
+                for (int i = 0; i < p.getX() - x; i++) {
+                    pmask = ((0xEEEE & pmask) >> 1);
                 }
             } else {
-                for (int i = 0; i < x + w - (p.getX() + p.getW()); i++) {
-                    pmask <<= pmask & 0x7777;
+                for (int i = 0; i < x - p.getX(); i++) {
+                    tmask = ((0xEEEE & tmask) >> 1);
                 }
             }
-            // Bitshift down to match y position
-            if (p.getY() + p.getH() < y + h) {
-                pmask <<= (p.getY() + p.getH() - (y + h)) * 4;
+
+            // Move the mask of the most lower piece down
+            if (y > p.getY()) {
+                tmask >>= ((y - p.getY()) * 4);
             } else {
-                tmask <<= (y + h - (p.getY() + p.getH())) * 4;
+                pmask >>= ((p.getY() - y) * 4);
             }
-            if (pmask & tmask) {
-                mvprintw(6, 20, "COLISION=1");
+
+            if ((pmask & tmask) != 0) {
                 return true;
             }
         }
-        mvprintw(6, 20, "COLISION=0");
         return false;
     }
     inline void setX(const int x) { this->x = x; }
@@ -178,10 +175,8 @@ int main()
         case KEY_RIGHT:
             cur_piece.setX(cur_piece.getX() + 1);
             break;
-        case KEY_DOWN:
-            cur_piece.setY(cur_piece.getY() + 1);
-            break;
-        case 'd': // DEBUG
+        case 'd':
+            debug = true;
             break;
         case KEY_ESCAPE:
             is_running = false;
@@ -189,9 +184,11 @@ int main()
 
         /* Logic */
         bool is_colliding = false;
+        Piece check_piece = cur_piece;
+        check_piece.setY(check_piece.getY() + 1);
         // Check for collision with other pieces
         for (const Piece& p : placed_pieces) {
-            if (p.collidesWith(cur_piece)) {
+            if (p.collidesWith(check_piece)) {
                 is_colliding = true;
                 break;
             }
@@ -202,7 +199,8 @@ int main()
         }
 
         if (is_colliding) {
-            placed_pieces.push_back(Piece{ cur_piece });
+            Piece copy = cur_piece;
+            placed_pieces.push_back(copy);
             cur_piece = Piece((PieceType)rand());
         } else {
             cur_piece.setY(cur_piece.getY() + 1);
