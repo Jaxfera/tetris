@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 
-project(qtetris)
+project(tetris)
 
 set(CMAKE_CXX_FLAGS "-std=c++17 -Wall -Wextra")
 
