@@ -5,6 +5,7 @@
 #include <ncurses.h>
 #include <random>
 #include <vector>
+#include <thread>
 
 static constexpr int KEY_ESCAPE{ 27 };
 static WINDOW* playfield;
@@ -47,7 +48,7 @@ private:
     int x, y, w, h;
 
 public:
-    inline Piece(const PieceType t, const int x = 1, const int y = 1)
+    Piece(const PieceType t, const int x = 1, const int y = 1)
         : type{ pieces[t] }
         , x{ x }
         , y{ y }
@@ -68,7 +69,7 @@ public:
             pmaskh <<= 4;
         }
     }
-    inline void draw() const
+    void draw() const
     {
         uint16_t pmask = type;
         for (int k = y; k < y + 4; k++) {
@@ -80,7 +81,7 @@ public:
             }
         }
     }
-    inline bool collidesWith(const Piece& p) const
+    bool collidesWith(const Piece& p) const
     {
         // Check if in bounds
         if (p.getY() <= y + h && p.getY() + p.getH() >= y
@@ -112,13 +113,46 @@ public:
         }
         return false;
     }
-    inline void setX(const int x) { this->x = x; }
-    inline void setY(const int y) { this->y = y; }
-    inline uint16_t getType() const { return type; }
-    inline int getX() const { return x; }
-    inline int getY() const { return y; }
-    inline int getW() const { return w; }
-    inline int getH() const { return h; }
+    bool collidesWith(const uint16_t m, const int x, const int y, const int w, const int h)
+    {
+        // Check if in bounds
+        if (y <= this->y + this->h && y + h >= this->y
+            && x <= this->x + this->w && x + w >= this->x) {
+            uint16_t pmask = m;
+            uint16_t tmask = this->getType();
+
+            // Move the mask of the most right piece to the right
+            if (x > this->x) {
+                for (int i = 0; i < x - this->x; i++) {
+                    pmask = ((0xEEEE & pmask) >> 1);
+                }
+            } else {
+                for (int i = 0; i < this->x - x; i++) {
+                    tmask = ((0xEEEE & tmask) >> 1);
+                }
+            }
+
+            // Move the mask of the most lower piece down
+            if (this->y > y) {
+                tmask >>= ((this->y - y) * 4);
+            } else {
+                pmask >>= ((y - this->y) * 4);
+            }
+
+            if ((pmask & tmask) != 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    inline void setX(const int x) noexcept { this->x = x; }
+    inline void setY(const int y) noexcept { this->y = y; }
+    inline uint16_t getType() const noexcept { return type; }
+    inline int getX() const noexcept { return x; }
+    inline int getY() const noexcept { return y; }
+    inline int getW() const noexcept { return w; }
+    inline int getH() const noexcept { return h; }
 };
 
 int main()
@@ -154,10 +188,14 @@ int main()
         /* Input */
         switch (getch()) {
         case KEY_LEFT:
-            cur_piece.setX(cur_piece.getX() - 1);
+            if (cur_piece.getX() > 1) {
+                cur_piece.setX(cur_piece.getX() - 1);
+            }
             break;
         case KEY_RIGHT:
-            cur_piece.setX(cur_piece.getX() + 1);
+            if (cur_piece.getX() + cur_piece.getW() < 8) {
+                cur_piece.setX(cur_piece.getX() + 1);
+            }
             break;
         case KEY_ESCAPE:
             is_running = false;
@@ -175,7 +213,7 @@ int main()
             }
         }
         // Check for collision with playfield
-        if (cur_piece.getY() + cur_piece.getH() > 15) {
+        if (check_piece.collidesWith(0xF000, check_piece.getX() - 2, 16, 4, 1)) {
             is_colliding = true;
         }
 
