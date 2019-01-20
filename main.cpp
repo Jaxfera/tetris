@@ -2,13 +2,16 @@
 #include <array>
 #include <chrono>
 #include <cstdint>
+#include <functional>
+#include <mutex>
 #include <ncurses.h>
 #include <random>
-#include <vector>
 #include <thread>
+#include <vector>
 
 static constexpr int KEY_ESCAPE{ 27 };
 static WINDOW* playfield;
+static std::mutex lock;
 
 /* Convinience implementation for random integer generation */
 struct Random {
@@ -83,6 +86,7 @@ public:
     }
     bool collidesWith(const Piece& p) const
     {
+        std::lock_guard<std::mutex> g(lock);
         // Check if in bounds
         if (p.getY() <= y + h && p.getY() + p.getH() >= y
             && p.getX() <= x + w && p.getX() + p.getW() >= x) {
@@ -115,6 +119,7 @@ public:
     }
     bool collidesWith(const uint16_t m, const int x, const int y, const int w, const int h)
     {
+        std::lock_guard<std::mutex> g(lock);
         // Check if in bounds
         if (y <= this->y + this->h && y + h >= this->y
             && x <= this->x + this->w && x + w >= this->x) {
@@ -155,19 +160,73 @@ public:
     inline int getH() const noexcept { return h; }
 };
 
+static void update(const Piece& cur_piece, const std::vector<Piece>& placed_pieces)
+{
+    std::lock_guard<std::mutex> g(lock);
+    /* Render */
+    refresh();
+    wclear(playfield);
+    for (const Piece& p : placed_pieces) {
+        p.draw();
+    }
+    cur_piece.draw();
+    box(playfield, 0, 0);
+    wrefresh(playfield);
+}
+
 int main()
 {
-    int input_delay_deciseconds{ 10 };
     bool is_running{ true };
     Random rand{ 0, pieces.size() - 1 };
     Piece cur_piece{ (PieceType)rand() };
     std::vector<Piece> placed_pieces;
+    std::thread inputThread([&cur_piece, &is_running, &placed_pieces]() {
+        while (is_running) {
+            bool is_colliding = false;
+            /* Input */
+            switch (getch()) {
+            case KEY_LEFT:
+                if (cur_piece.getX() > 1) {
+                    Piece check_piece = cur_piece;
+                    check_piece.setX(cur_piece.getX() - 1);
+                    for (const Piece& p : placed_pieces) {
+                        if (p.collidesWith(check_piece)) {
+                            is_colliding = true;
+                            break;
+                        }
+                    }
+                    if (!is_colliding) {
+                        cur_piece.setX(cur_piece.getX() - 1);
+                    }
+                }
+                break;
+            case KEY_RIGHT:
+                if (cur_piece.getX() + cur_piece.getW() < 8) {
+                    Piece check_piece = cur_piece;
+                    check_piece.setX(cur_piece.getX() + 1);
+                    for (const Piece& p : placed_pieces) {
+                        if (p.collidesWith(check_piece)) {
+                            is_colliding = true;
+                            break;
+                        }
+                    }
+                    if (!is_colliding) {
+                        cur_piece.setX(cur_piece.getX() + 1);
+                    }
+                }
+                break;
+            case KEY_ESCAPE:
+                is_running = false;
+            }
+            //update(cur_piece, placed_pieces);
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+    });
 
     /* Init curses */
     initscr();
     noecho();
     keypad(stdscr, true);
-    halfdelay(input_delay_deciseconds);
     curs_set(0);
 
     /* Init playfield */
@@ -175,31 +234,7 @@ int main()
 
     /* Game loop */
     while (is_running) {
-        /* Render */
-        refresh();
-        wclear(playfield);
-        for (const Piece& p : placed_pieces) {
-            p.draw();
-        }
-        cur_piece.draw();
-        box(playfield, 0, 0);
-        wrefresh(playfield);
-
-        /* Input */
-        switch (getch()) {
-        case KEY_LEFT:
-            if (cur_piece.getX() > 1) {
-                cur_piece.setX(cur_piece.getX() - 1);
-            }
-            break;
-        case KEY_RIGHT:
-            if (cur_piece.getX() + cur_piece.getW() < 8) {
-                cur_piece.setX(cur_piece.getX() + 1);
-            }
-            break;
-        case KEY_ESCAPE:
-            is_running = false;
-        }
+        update(cur_piece, placed_pieces);
 
         /* Logic */
         bool is_colliding = false;
@@ -224,6 +259,7 @@ int main()
         } else {
             cur_piece.setY(cur_piece.getY() + 1);
         }
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
 
     delwin(playfield);
