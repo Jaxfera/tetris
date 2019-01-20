@@ -218,7 +218,7 @@ int main()
             case KEY_ESCAPE:
                 is_running = false;
             }
-            //update(cur_piece, placed_pieces);
+            update(cur_piece, placed_pieces);
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
     });
@@ -261,6 +261,8 @@ int main()
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
+
+    inputThread.join();
 
     delwin(playfield);
     endwin();
