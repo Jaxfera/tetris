@@ -44,9 +44,33 @@ static constexpr std::array<uint16_t, 7> pieces{
     0b0100010001000100,
     0b0000111001000000
 };
+static constexpr uint16_t transpose(const uint16_t mask)
+{
+    uint16_t retval = 0;
+    for (int y = 0; y < 4; y++) {
+        for (int x = 0; x < 4; x++) {
+            if (mask & (0x8000 >> y * 4 + x)) {
+                retval |= (0x8000 >> x * 4 + y);
+            }
+        }
+    }
+    return retval;
+}
+static constexpr uint16_t reverse(const uint16_t mask)
+{
+    uint16_t retval = 0;
+    for (int y = 0; y < 4; y++) {
+        retval |= (mask & (0x8000 >> (4 * y))) ? 0x1000 >> (4 * y) : 0;
+        retval |= (mask & (0x4000 >> (4 * y))) ? 0x2000 >> (4 * y) : 0;
+        retval |= (mask & (0x2000 >> (4 * y))) ? 0x4000 >> (4 * y) : 0;
+        retval |= (mask & (0x1000 >> (4 * y))) ? 0x8000 >> (4 * y) : 0;
+    }
+    return retval;
+}
 static constexpr uint16_t rotate_mask(const uint16_t mask)
 {
-    return 0;
+    uint16_t retval = transpose(mask);
+    return reverse(retval);
 }
 
 struct Piece {
@@ -59,10 +83,14 @@ public:
         : type{ pieces[t] }
         , x{ x }
         , y{ y }
-        , w{ 0 }
-        , h{ 0 }
+    {
+        calcWH();
+    }
+    void calcWH()
     {
         // Set width and height
+        w = 0;
+        h = 0;
         uint16_t pmaskw = type;
         uint16_t pmaskh = type;
         for (int i = 0; i < 4; i++) {
@@ -155,8 +183,10 @@ public:
         return false;
     }
 
-    void rotate()
+    inline void rotate()
     {
+        type = rotate_mask(type);
+        calcWH();
     }
 
     inline void setX(const int x) noexcept { this->x = x; }
@@ -238,6 +268,10 @@ int main()
                         break;
                     }
                 }
+                // Check if rotation would collide with the playfield
+                is_colliding = is_colliding || check_piece.collidesWith(0xFFFF, 8, check_piece.getY(), 4, 4)
+                    || check_piece.collidesWith(0x8888, 0, check_piece.getY(), 1, 4)
+                    || check_piece.collidesWith(0xFFFF, check_piece.getX(), 16, 4, 4);
                 if (!is_colliding) {
                     cur_piece.rotate();
                 }
