@@ -36,14 +36,18 @@ enum PieceType { L = 0,
     I,
     T };
 static constexpr std::array<uint16_t, 7> pieces{
-    0b1000100011000000,
-    0b0100010011000000,
-    0b1100011000000000,
-    0b0110110000000000,
-    0b1100110000000000,
-    0b1000100010001000,
-    0b1110010000000000
+    0b0100010001100000,
+    0b0010001001100000,
+    0b0000011000110000,
+    0b0000001101100000,
+    0b0000011001100000,
+    0b0100010001000100,
+    0b0000111001000000
 };
+static constexpr uint16_t rotate_mask(const uint16_t mask)
+{
+    return 0;
+}
 
 struct Piece {
 private:
@@ -151,6 +155,10 @@ public:
         return false;
     }
 
+    void rotate()
+    {
+    }
+
     inline void setX(const int x) noexcept { this->x = x; }
     inline void setY(const int y) noexcept { this->y = y; }
     inline uint16_t getType() const noexcept { return type; }
@@ -185,10 +193,14 @@ int main()
             bool is_colliding = false;
             /* Input */
             switch (getch()) {
-            case KEY_LEFT:
-                if (cur_piece.getX() > 1) {
-                    Piece check_piece = cur_piece;
-                    check_piece.setX(cur_piece.getX() - 1);
+            case KEY_ESCAPE:
+                is_running = false;
+                break;
+            case KEY_LEFT: {
+                // Check if next position would collide with other pieces
+                Piece check_piece = cur_piece;
+                check_piece.setX(cur_piece.getX() - 1);
+                if (!check_piece.collidesWith(0x8888, 0, check_piece.getY(), 1, 4)) {
                     for (const Piece& p : placed_pieces) {
                         if (p.collidesWith(check_piece)) {
                             is_colliding = true;
@@ -199,11 +211,12 @@ int main()
                         cur_piece.setX(cur_piece.getX() - 1);
                     }
                 }
-                break;
-            case KEY_RIGHT:
-                if (cur_piece.getX() + cur_piece.getW() < 8) {
-                    Piece check_piece = cur_piece;
-                    check_piece.setX(cur_piece.getX() + 1);
+            } break;
+            case KEY_RIGHT: {
+                // Check if next position would collide with other pieces
+                Piece check_piece = cur_piece;
+                check_piece.setX(cur_piece.getX() + 1);
+                if (!check_piece.collidesWith(0xFFFF, 8, check_piece.getY(), 4, 4)) {
                     for (const Piece& p : placed_pieces) {
                         if (p.collidesWith(check_piece)) {
                             is_colliding = true;
@@ -214,9 +227,20 @@ int main()
                         cur_piece.setX(cur_piece.getX() + 1);
                     }
                 }
-                break;
-            case KEY_ESCAPE:
-                is_running = false;
+            } break;
+            case KEY_UP:
+                // Check if rotation would collide with other pieces
+                Piece check_piece = cur_piece;
+                check_piece.rotate();
+                for (const Piece& p : placed_pieces) {
+                    if (p.collidesWith(check_piece)) {
+                        is_colliding = true;
+                        break;
+                    }
+                }
+                if (!is_colliding) {
+                    cur_piece.rotate();
+                }
             }
             update(cur_piece, placed_pieces);
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -247,8 +271,8 @@ int main()
                 break;
             }
         }
-        // Check for collision with playfield
-        if (check_piece.collidesWith(0xF000, check_piece.getX() - 2, 16, 4, 1)) {
+        // Check for collision with bottom of the playfield
+        if (check_piece.collidesWith(0xFFFF, check_piece.getX(), 16, 4, 4)) {
             is_colliding = true;
         }
 
