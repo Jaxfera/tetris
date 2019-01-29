@@ -31,3 +31,10 @@ target_link_libraries(tetris
 target_include_directories(tetris PRIVATE "${CMAKE_SOURCE_DIR}")
 target_compile_features(tetris PUBLIC cxx_std_17)
 set_target_properties(tetris PROPERTIES CXX_EXTENSIONS OFF)
+
+# Enable interprocedural optimization if available
+include(CheckIPOSupported)
+check_ipo_supported(RESULT result)
+if(result)
+    set_target_properties(tetris PROPERTIES INTERPROCEDURAL_OPTIMIZATION TRUE)
+endif()
