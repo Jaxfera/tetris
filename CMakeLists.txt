@@ -16,6 +16,22 @@ if(CCACHE_PROGRAM)
     set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
 endif()
 
+# Add clang-tidy if available
+if(CMAKE_VERSION VERSION_GREATER 3.6)
+    option(CLANG_TIDY_FIX "Perform fixes for Clang-Tidy" OFF)
+    find_program(CLANG_TIDY_EXE 
+        NAMES "clang-tidy"
+        DOC "Path to clang-tidy executable"
+    )
+    if(CLANG_TIDY_EXE)
+        if(CLANG_TIDY_FIX)
+            set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_EXE}" "-fix")
+        else()
+            set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_EXE}")
+        endif()
+    endif()
+endif()
+
 # Set build type to Release if not specified
 set(default_build_type "Release")
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
