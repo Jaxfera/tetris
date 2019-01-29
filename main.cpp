@@ -49,8 +49,8 @@ static constexpr uint16_t transpose(const uint16_t mask)
     uint16_t retval = 0;
     for (int y = 0; y < 4; y++) {
         for (int x = 0; x < 4; x++) {
-            if (mask & (0x8000 >> y * 4 + x)) {
-                retval |= (0x8000 >> x * 4 + y);
+            if (mask & (0x8000 >> (y * 4 + x))) {
+                retval |= (0x8000 >> (x * 4 + y));
             }
         }
     }
