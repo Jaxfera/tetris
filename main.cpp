@@ -133,7 +133,7 @@ struct Piece
     }
     bool collidesWith(const uint16_t m, const int x, const int y, const int w, const int h) const
     {
-        std::lock_guard<std::mutex> g(lock);
+        std::lock_guard g(lock);
         // Check if in bounds
         if (y <= this->y + this->h && y + h >= this->y && x <= this->x + this->w && x + w >= this->x)
         {
@@ -191,7 +191,7 @@ struct Piece
 
 static void update(const Piece &cur_piece, const std::vector<Piece> &placed_pieces)
 {
-    std::lock_guard<std::mutex> g(lock);
+    std::lock_guard g(lock);
     /* Render */
     refresh();
     wclear(playfield);
@@ -326,11 +326,21 @@ int main()
             Piece copy = cur_piece;
             placed_pieces.push_back(copy);
             cur_piece = Piece((PieceType)rand());
+
+            // End if piece was stuck on top of playfield
+            if(copy.getY() <= 1) {
+                is_running = false;
+                break;
+            }
         }
         else
         {
             cur_piece.setY(cur_piece.getY() + 1);
         }
+
+        // Check for filled rows
+        // TODO
+        
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
 
@@ -338,4 +348,7 @@ int main()
 
     delwin(playfield);
     endwin();
+
+    // Show game over screen
+    // TODO
 }
